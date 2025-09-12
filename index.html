@@ -265,11 +265,17 @@
         async function verstuurNaarGoogleForm(formData) {
             const params = new URLSearchParams();
             
+            // Debug: log wat we versturen
+            console.log("Versturen:", formData);
+            
             for (const [key, value] of Object.entries(formData)) {
                 if (FORM_FIELDS[key]) {
                     params.append(FORM_FIELDS[key], value);
+                    console.log(`${FORM_FIELDS[key]} = ${value}`);
                 }
             }
+            
+            console.log("Final params:", params.toString());
 
             try {
                 // Gebruik fetch met no-cors mode voor Google Forms
