@@ -63,9 +63,20 @@
             margin: 10px 0;
             font-size: 14px;
         }
+        .version {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 12px;
+            color: #666;
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
     </style>
 </head>
 <body>
+    <div class="version">v6</div>
     <div class="container">
         <h1>🕐 Prikklok Systeem</h1>
         
@@ -78,6 +89,7 @@
                 <label for="naam">Naam:</label>
                 <select id="naam" required>
                     <option value="">Selecteer uw naam</option>
+                    <option value="Hugo Doucet">Hugo Doucet</option>
                     <option value="Jan Janssen">Jan Janssen</option>
                     <option value="Marie de Vries">Marie de Vries</option>
                     <option value="Piet Bakker">Piet Bakker</option>
@@ -121,13 +133,13 @@
             'Zaal D4': { lat: 52.3599, lng: 4.9067, radius: 50 }  // Nieuwmarkt area
         };
 
-        // Google Form configuratie
+        // Google Form configuratie - CORRECTE entry IDs uit HAR file
         const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSe8F-z16VRPNrmF8zsAOKfOlMnSpPghat4tc7MkSZd_F6Ul9A/formResponse';
         const FORM_FIELDS = {
-            naam: 'entry.123456789',      // Vervang met echte entry IDs van je form
-            zaal: 'entry.987654321',      // Vervang met echte entry IDs van je form
-            actie: 'entry.456789123',     // Vervang met echte entry IDs van je form
-            tijdstip: 'entry.789123456'   // Vervang met echte entry IDs van je form
+            naam: 'entry.289329980',      // Naam veld (uit HAR file)
+            zaal: 'entry.1152050958',     // Zaal veld (uit HAR file)
+            actie: 'entry.2061650907',    // Actie veld (uit HAR file)
+            tijdstip: 'entry.846134171'   // Tijdstip veld (uit HAR file)
         };
 
         let huidigeLocatie = null;
@@ -267,6 +279,7 @@
             
             // Debug: log wat we versturen
             console.log("Versturen:", formData);
+            console.log("CORRECTE Entry IDs worden gebruikt:");
             
             for (const [key, value] of Object.entries(formData)) {
                 if (FORM_FIELDS[key]) {
@@ -316,12 +329,11 @@
             
             if (success) {
                 statusDiv.className = 'status success';
-                statusDiv.innerHTML = `✅ ${formData.actie} geregistreerd voor ${formData.voornaam} ${formData.achternaam} in ${formData.zaal}`;
+                statusDiv.innerHTML = `✅ ${formData.actie} geregistreerd voor ${formData.naam} in ${formData.zaal}`;
                 
                 // Reset form na succesvolle registratie
                 setTimeout(() => {
-                    document.getElementById('voornaam').value = '';
-                    document.getElementById('achternaam').value = '';
+                    document.getElementById('naam').value = '';
                     document.getElementById('actie').value = '';
                     statusDiv.className = 'status loading';
                     statusDiv.innerHTML = '📍 Gereed voor nieuwe registratie';
