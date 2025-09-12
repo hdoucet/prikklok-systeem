@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prikklok Systeem</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .loading { background-color: #fff3cd; border: 1px solid #ffeaa7; }
+        .success { background-color: #d4edda; border: 1px solid #00b894; }
+        .error { background-color: #f8d7da; border: 1px solid #e17055; }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #0984e3;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0770d1;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .location-info {
+            background: #e8f4f8;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕐 Prikklok Systeem</h1>
+        
+        <div id="status" class="status loading">
+            📍 Locatie wordt bepaald...
+        </div>
+
+        <form id="attendanceForm">
+            <div class="form-group">
+                <label for="naam">Naam:</label>
+                <select id="naam" required>
+                    <option value="">Selecteer uw naam</option>
+                    <option value="Jan Janssen">Jan Janssen</option>
+                    <option value="Marie de Vries">Marie de Vries</option>
+                    <option value="Piet Bakker">Piet Bakker</option>
+                    <option value="Lisa van Dam">Lisa van Dam</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="zaal">Zaal:</label>
+                <select id="zaal" required>
+                    <option value="">Automatisch detecteren...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="actie">Actie:</label>
+                <select id="actie" required>
+                    <option value="">Selecteer actie</option>
+                    <option value="Inchecken">Inchecken</option>
+                    <option value="Uitchecken">Uitchecken</option>
+                </select>
+            </div>
+
+            <div class="location-info" id="locationInfo" style="display: none;">
+                <strong>Locatie informatie:</strong><br>
+                <span id="locationDetails"></span>
+            </div>
+
+            <button type="submit" id="submitBtn" disabled>
+                📝 Registreren
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // Configuratie: zaal-locaties (coördinaten van zaalcentra)
+        const zaalLocaties = {
+            'Zaal A1': { lat: 52.3676, lng: 4.9041, radius: 50 }, // Amsterdam centrum
+            'Zaal B2': { lat: 52.3702, lng: 4.8952, radius: 50 }, // Vondelpark area
+            'Zaal C3': { lat: 52.3738, lng: 4.8910, radius: 50 }, // Museumplein area
+            'Zaal D4': { lat: 52.3599, lng: 4.9067, radius: 50 }  // Nieuwmarkt area
+        };
+
+        // Google Form configuratie
+        const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/YOUR_FORM_ID/formResponse';
+        const FORM_FIELDS = {
+            naam: 'entry.123456789',      // Vervang met echte entry IDs
+            zaal: 'entry.987654321',
+            actie: 'entry.456789123',
+            tijdstip: 'entry.789123456'
+        };
+
+        let huidigeLocatie = null;
+
+        // Bereken afstand tussen twee coördinaten (Haversine formule)
+        function berekenAfstand(lat1, lng1, lat2, lng2) {
+            const R = 6371e3; // Earth radius in meters
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lng2-lng1) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c; // Distance in meters
+        }
+
+        // Bepaal dichtstbijzijnde zaal op basis van locatie
+        function bepaalZaal(userLat, userLng) {
+            let dichtstbijzijndeZaal = null;
+            let kortsteAfstand = Infinity;
+
+            for (const [zaalNaam, locatie] of Object.entries(zaalLocaties)) {
+                const afstand = berekenAfstand(userLat, userLng, locatie.lat, locatie.lng);
+                
+                if (afstand <= locatie.radius && afstand < kortsteAfstand) {
+                    kortsteAfstand = afstand;
+                    dichtstbijzijndeZaal = zaalNaam;
+                }
+            }
+
+            return {
+                zaal: dichtstbijzijndeZaal,
+                afstand: Math.round(kortsteAfstand)
+            };
+        }
+
+        // Update zaal dropdown
+        function updateZaalDropdown(gedetecteerdezaal = null) {
+            const zaalSelect = document.getElementById('zaal');
+            zaalSelect.innerHTML = '<option value="">Selecteer zaal</option>';
+            
+            for (const zaalNaam of Object.keys(zaalLocaties)) {
+                const option = document.createElement('option');
+                option.value = zaalNaam;
+                option.textContent = zaalNaam;
+                
+                if (zaalNaam === gedetecteerdezaal) {
+                    option.selected = true;
+                    option.textContent += ' (gedetecteerd)';
+                    option.style.fontWeight = 'bold';
+                    option.style.backgroundColor = '#e8f5e8';
+                }
+                
+                zaalSelect.appendChild(option);
+            }
+        }
+
+        // Vraag locatie op
+        function vraagLocatieOp() {
+            const statusDiv = document.getElementById('status');
+            const locationInfo = document.getElementById('locationInfo');
+            const locationDetails = document.getElementById('locationDetails');
+            
+            if (!navigator.geolocation) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ Geolocatie wordt niet ondersteund door deze browser';
+                updateZaalDropdown();
+                document.getElementById('submitBtn').disabled = false;
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    huidigeLocatie = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+
+                    const resultaat = bepaalZaal(huidigeLocatie.lat, huidigeLocatie.lng);
+                    
+                    if (resultaat.zaal) {
+                        statusDiv.className = 'status success';
+                        statusDiv.innerHTML = `✅ Locatie bepaald: ${resultaat.zaal}`;
+                        updateZaalDropdown(resultaat.zaal);
+                    } else {
+                        statusDiv.className = 'status error';
+                        statusDiv.innerHTML = '⚠️ Geen bekende zaal gevonden op deze locatie';
+                        updateZaalDropdown();
+                    }
+
+                    // Toon locatie-informatie
+                    locationDetails.innerHTML = `
+                        Coördinaten: ${huidigeLocatie.lat.toFixed(4)}, ${huidigeLocatie.lng.toFixed(4)}<br>
+                        Nauwkeurigheid: ±${Math.round(huidigeLocatie.accuracy)}m
+                        ${resultaat.zaal ? `<br>Afstand tot zaalcentrum: ${resultaat.afstand}m` : ''}
+                    `;
+                    locationInfo.style.display = 'block';
+                    document.getElementById('submitBtn').disabled = false;
+                },
+                (error) => {
+                    let errorMessage = '';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = '❌ Locatietoegang geweigerd';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = '❌ Locatie niet beschikbaar';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = '❌ Locatie aanvraag time-out';
+                            break;
+                        default:
+                            errorMessage = '❌ Onbekende fout bij locatiebepaling';
+                            break;
+                    }
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = errorMessage + '<br><small>U kunt handmatig een zaal selecteren</small>';
+                    updateZaalDropdown();
+                    document.getElementById('submitBtn').disabled = false;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
+                }
+            );
+        }
+
+        // Verstuur data naar Google Forms
+        async function verstuurNaarGoogleForm(formData) {
+            const params = new URLSearchParams();
+            
+            for (const [key, value] of Object.entries(formData)) {
+                if (FORM_FIELDS[key]) {
+                    params.append(FORM_FIELDS[key], value);
+                }
+            }
+
+            try {
+                // Gebruik fetch met no-cors mode voor Google Forms
+                await fetch(GOOGLE_FORM_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: params
+                });
+                
+                return true;
+            } catch (error) {
+                console.error('Fout bij versturen:', error);
+                return false;
+            }
+        }
+
+        // Form submit handler
+        document.getElementById('attendanceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const statusDiv = document.getElementById('status');
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = '📤 Versturen...';
+            
+            const formData = {
+                naam: document.getElementById('naam').value,
+                zaal: document.getElementById('zaal').value,
+                actie: document.getElementById('actie').value,
+                tijdstip: new Date().toLocaleString('nl-NL')
+            };
+
+            const success = await verstuurNaarGoogleForm(formData);
+            
+            if (success) {
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = `✅ ${formData.actie} geregistreerd voor ${formData.naam} in ${formData.zaal}`;
+                
+                // Reset form na succesvolle registratie
+                setTimeout(() => {
+                    document.getElementById('naam').value = '';
+                    document.getElementById('actie').value = '';
+                    statusDiv.className = 'status loading';
+                    statusDiv.innerHTML = '📍 Gereed voor nieuwe registratie';
+                }, 3000);
+            } else {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ Fout bij registratie. Probeer opnieuw.';
+            }
+            
+            submitBtn.disabled = false;
+            submitBtn.textContent = '📝 Registreren';
+        });
+
+        // Start locatiebepaling bij laden van pagina
+        window.addEventListener('load', vraagLocatieOp);
+    </script>
+</body>
+</html>
