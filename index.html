@@ -122,12 +122,12 @@
         };
 
         // Google Form configuratie
-        const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/YOUR_FORM_ID/formResponse';
+        const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSe8F-z16VRPNrmF8zsAOKfOlMnSpPghat4tc7MkSZd_F6Ul9A/formResponse';
         const FORM_FIELDS = {
-            naam: 'entry.123456789',      // Vervang met echte entry IDs
-            zaal: 'entry.987654321',
-            actie: 'entry.456789123',
-            tijdstip: 'entry.789123456'
+            naam: 'entry.123456789',      // Vervang met echte entry IDs van je form
+            zaal: 'entry.987654321',      // Vervang met echte entry IDs van je form
+            actie: 'entry.456789123',     // Vervang met echte entry IDs van je form
+            tijdstip: 'entry.789123456'   // Vervang met echte entry IDs van je form
         };
 
         let huidigeLocatie = null;
@@ -310,11 +310,12 @@
             
             if (success) {
                 statusDiv.className = 'status success';
-                statusDiv.innerHTML = `✅ ${formData.actie} geregistreerd voor ${formData.naam} in ${formData.zaal}`;
+                statusDiv.innerHTML = `✅ ${formData.actie} geregistreerd voor ${formData.voornaam} ${formData.achternaam} in ${formData.zaal}`;
                 
                 // Reset form na succesvolle registratie
                 setTimeout(() => {
-                    document.getElementById('naam').value = '';
+                    document.getElementById('voornaam').value = '';
+                    document.getElementById('achternaam').value = '';
                     document.getElementById('actie').value = '';
                     statusDiv.className = 'status loading';
                     statusDiv.innerHTML = '📍 Gereed voor nieuwe registratie';
