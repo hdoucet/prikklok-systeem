@@ -133,13 +133,14 @@
             'Zaal D4': { lat: 52.3599, lng: 4.9067, radius: 50 }  // Nieuwmarkt area
         };
 
-        // Google Form configuratie - CORRECTE entry IDs uit HAR file
+        // Google Form configuratie - GECORRIGEERDE mapping op basis van werkelijke data
         const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSe8F-z16VRPNrmF8zsAOKfOlMnSpPghat4tc7MkSZd_F6Ul9A/formResponse';
         const FORM_FIELDS = {
-            naam: 'entry.289329980',      // Naam veld (uit HAR file)
-            zaal: 'entry.1152050958',     // Zaal veld (uit HAR file)
-            actie: 'entry.2061650907',    // Actie veld (uit HAR file)
-            tijdstip: 'entry.846134171'   // Tijdstip veld (uit HAR file)
+            // Mapping gecorrigeerd op basis van HAR analyse:
+            naam: 'entry.289329980',      // Dit veld kreeg "Naam" - dus dit is het naam veld
+            zaal: 'entry.846134171',      // Dit veld kreeg "Zaal" - dus dit is het zaal veld  
+            actie: 'entry.2061650907',    // Dit veld kreeg "Inchecken" - correct actie veld
+            tijdstip: 'entry.1152050958' // Dit veld kreeg "12:00" - dus dit is tijdstip veld
         };
 
         let huidigeLocatie = null;
