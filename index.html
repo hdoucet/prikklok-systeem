@@ -27,6 +27,7 @@
         .loading { background-color: #fff3cd; border: 1px solid #ffeaa7; }
         .success { background-color: #d4edda; border: 1px solid #00b894; }
         .error { background-color: #f8d7da; border: 1px solid #e17055; }
+        .warning { background-color: #ffeaa7; border: 1px solid #fdcb6e; }
         .form-group {
             margin: 15px 0;
         }
@@ -41,6 +42,10 @@
             border: 1px solid #ddd;
             border-radius: 5px;
             font-size: 16px;
+        }
+        select.error, input.error {
+            border-color: #e17055;
+            background-color: #fdf2f2;
         }
         button {
             background-color: #0984e3;
@@ -73,10 +78,16 @@
             padding: 2px 8px;
             border-radius: 3px;
         }
+        .validation-error {
+            color: #e17055;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <div class="version">v6</div>
+    <div class="version">v7</div>
     <div class="container">
         <h1>🕐 Prikklok Systeem</h1>
         
@@ -95,6 +106,7 @@
                     <option value="Piet Bakker">Piet Bakker</option>
                     <option value="Lisa van Dam">Lisa van Dam</option>
                 </select>
+                <div class="validation-error" id="naam-error">Selecteer een naam</div>
             </div>
 
             <div class="form-group">
@@ -102,6 +114,7 @@
                 <select id="zaal" required>
                     <option value="">Automatisch detecteren...</option>
                 </select>
+                <div class="validation-error" id="zaal-error">Selecteer een zaal</div>
             </div>
 
             <div class="form-group">
@@ -111,6 +124,7 @@
                     <option value="Inchecken">Inchecken</option>
                     <option value="Uitchecken">Uitchecken</option>
                 </select>
+                <div class="validation-error" id="actie-error">Selecteer een actie</div>
             </div>
 
             <div class="location-info" id="locationInfo" style="display: none;">
@@ -133,17 +147,45 @@
             'Zaal D4': { lat: 52.3599, lng: 4.9067, radius: 50 }  // Nieuwmarkt area
         };
 
-        // Google Form configuratie - GECORRIGEERDE mapping op basis van werkelijke data
+        // Google Form configuratie - GECORRIGEERDE mapping op basis van HAR analyse
         const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSe8F-z16VRPNrmF8zsAOKfOlMnSpPghat4tc7MkSZd_F6Ul9A/formResponse';
         const FORM_FIELDS = {
-            // Mapping gecorrigeerd op basis van HAR analyse:
+            // Mapping gecorrigeerd op basis van werkelijke form submissions:
             naam: 'entry.289329980',      // Dit veld kreeg "Naam" - dus dit is het naam veld
             zaal: 'entry.846134171',      // Dit veld kreeg "Zaal" - dus dit is het zaal veld  
             actie: 'entry.2061650907',    // Dit veld kreeg "Inchecken" - correct actie veld
-            tijdstip: 'entry.1152050958' // Dit veld kreeg "12:00" - dus dit is tijdstip veld
+            tijdstip: 'entry.1152050958'  // Dit veld kreeg "12:00" - dus dit is tijdstip veld
         };
 
         let huidigeLocatie = null;
+
+        // Validatie functie
+        function validateForm() {
+            let isValid = true;
+            const fields = ['naam', 'zaal', 'actie'];
+            
+            // Reset alle error states
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                const error = document.getElementById(fieldId + '-error');
+                field.classList.remove('error');
+                error.style.display = 'none';
+            });
+
+            // Valideer elk veld
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                const error = document.getElementById(fieldId + '-error');
+                
+                if (!field.value || field.value.trim() === '') {
+                    field.classList.add('error');
+                    error.style.display = 'block';
+                    isValid = false;
+                }
+            });
+
+            return isValid;
+        }
 
         // Bereken afstand tussen twee coördinaten (Haversine formule)
         function berekenAfstand(lat1, lng1, lat2, lng2) {
@@ -279,21 +321,23 @@
             const params = new URLSearchParams();
             
             // Debug: log wat we versturen
-            console.log("Versturen:", formData);
-            console.log("CORRECTE Entry IDs worden gebruikt:");
+            console.log("=== FORM SUBMISSION DEBUG ===");
+            console.log("Form data:", formData);
+            console.log("Mapping being used:");
             
             for (const [key, value] of Object.entries(formData)) {
-                if (FORM_FIELDS[key]) {
+                if (FORM_FIELDS[key] && value) {
                     params.append(FORM_FIELDS[key], value);
-                    console.log(`${FORM_FIELDS[key]} = ${value}`);
+                    console.log(`${key}: "${value}" → ${FORM_FIELDS[key]}`);
                 }
             }
             
-            console.log("Final params:", params.toString());
+            console.log("Final URL params:", params.toString());
+            console.log("==============================");
 
             try {
                 // Gebruik fetch met no-cors mode voor Google Forms
-                await fetch(GOOGLE_FORM_URL, {
+                const response = await fetch(GOOGLE_FORM_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: {
@@ -302,6 +346,7 @@
                     body: params
                 });
                 
+                console.log("Submission completed");
                 return true;
             } catch (error) {
                 console.error('Fout bij versturen:', error);
@@ -312,6 +357,14 @@
         // Form submit handler
         document.getElementById('attendanceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            // Valideer het formulier
+            if (!validateForm()) {
+                const statusDiv = document.getElementById('status');
+                statusDiv.className = 'status warning';
+                statusDiv.innerHTML = '⚠️ Vul alle velden in voordat u registreert';
+                return;
+            }
             
             const submitBtn = document.getElementById('submitBtn');
             const statusDiv = document.getElementById('status');
